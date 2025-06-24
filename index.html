@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SQL-EDA: Layoffs </title>
+  <link rel="stylesheet" href="style.css" />
+  <script src="script.js" defer></script>
+</head>
+<body>
+  <div class="sidebar">
+    <h2>Questions</h2>
+    <a href="#q1">1. Total Layoffs (2020–2023)</a>
+    <a href="#q2">2. Industry With Highest Layoffs</a>
+    <a href="#q3">3. Layoffs by Country</a>
+    <a href="#q4">4. Annual Layoff Trend</a>
+    <a href="#q5">5. Monthly Layoffs (Rolling)</a>
+    <a href="#q6">6. Top Companies by Yearly Layoffs</a>
+    <a href="#q7">7. Heavily Funded Companies That Shut Down</a>
+    <a href="#q8">8. Layoffs by Funding Stage</a>
+  </div>
+
+  <div class="content">
+    <header style="margin-bottom: 2rem;">
+      <h1 style="font-size: 2rem; color: #2c3e50;">📊 EDA on Global  Layoffs Using SQL </h1>
+      <p style="font-size: 1rem; color: #555;">
+        A structured exploration of global tech layoffs using SQL – answering key business questions from industry impact to year-wise trends.
+      </p>
+    </header>
+
+    <div class="section" id="q1">
+      <h3>1. Total Layoffs Between 2020 and 2023</h3>
+      <pre><code>SELECT SUM(total_laid_off) AS total_layoffs_2020_2023
+FROM layoffs_cleaned
+WHERE YEAR(`date`) BETWEEN 2020 AND 2023;</code></pre>
+    </div>
+
+    <div class="section" id="q2">
+      <h3>2. Industry With the Highest Layoff Impact</h3>
+      <pre><code>SELECT industry, SUM(total_laid_off) AS total_layoffs
+FROM layoffs_cleaned
+GROUP BY industry
+ORDER BY total_layoffs DESC;</code></pre>
+    </div>
+
+    <div class="section" id="q3">
+      <h3>3. Layoffs by Country — Global Impact View</h3>
+      <pre><code>SELECT country, SUM(total_laid_off) AS total_layoffs
+FROM layoffs_cleaned
+GROUP BY country
+ORDER BY total_layoffs DESC;</code></pre>
+    </div>
+
+    <div class="section" id="q4">
+      <h3>4. Annual Layoff Trend — Year Over Year</h3>
+      <pre><code>SELECT YEAR(`date`) AS layoff_year, SUM(total_laid_off) AS total_layoffs
+FROM layoffs_cleaned
+GROUP BY layoff_year
+ORDER BY layoff_year DESC;</code></pre>
+    </div>
+
+    <div class="section" id="q5">
+      <h3>5. Monthly Layoffs With Cumulative Trend</h3>
+      <pre><code>WITH monthly_layoffs AS (
+  SELECT SUBSTRING(`date`, 1, 7) AS layoff_month,
+         SUM(total_laid_off) AS monthly_total
+  FROM layoffs_cleaned
+  WHERE SUBSTRING(`date`, 1, 7) IS NOT NULL
+  GROUP BY layoff_month
+  ORDER BY layoff_month ASC
+)
+SELECT layoff_month, monthly_total,
+       SUM(monthly_total) OVER (ORDER BY layoff_month) AS cumulative_total
+FROM monthly_layoffs;</code></pre>
+    </div>
+
+    <div class="section" id="q6">
+      <h3>6. Top Companies With Most Layoffs Per Year</h3>
+      <pre><code>WITH yearly_company_layoffs AS (
+  SELECT SUBSTRING(`date`, 1, 4) AS layoff_year,
+         company,
+         SUM(total_laid_off) AS total_layoffs
+  FROM layoffs_cleaned
+  WHERE `date` IS NOT NULL
+  GROUP BY layoff_year, company
+),
+ranked_company_layoffs AS (
+  SELECT *, DENSE_RANK() OVER (PARTITION BY layoff_year ORDER BY total_layoffs DESC) AS rank_in_year
+  FROM yearly_company_layoffs
+)
+SELECT *
+FROM ranked_company_layoffs
+ORDER BY layoff_year, rank_in_year;</code></pre>
+    </div>
+
+    <div class="section" id="q7">
+      <h3>7. Funding vs Shutdown — Companies With Highest Capital But Still Failed</h3>
+      <pre><code>SELECT company, total_laid_off, funds_raised_millions
+FROM layoffs_cleaned
+WHERE percentage_laid_off = 1
+ORDER BY funds_raised_millions DESC
+LIMIT 10;</code></pre>
+    </div>
+
+    <div class="section" id="q8">
+      <h3>8. Layoffs by Funding Stage</h3>
+      <pre><code>SELECT stage, SUM(total_laid_off) AS total_layoffs
+FROM layoffs_cleaned
+GROUP BY stage
+ORDER BY total_layoffs DESC;</code></pre>
+    </div>
+  </div>
+</body>
+</html>
